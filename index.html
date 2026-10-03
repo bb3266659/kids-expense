@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="description" content="บันทึกค่าเรียนและกิจกรรมของลูกแบบออฟไลน์">
+  <title>Kids Expense — ค่าเรียนของลูก</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <div>
+        <p class="eyebrow">LOCAL-FIRST FAMILY PLANNER</p>
+        <h1>ค่าเรียนของลูก</h1>
+        <p class="subtitle">บันทึกง่าย เห็นภาพรวม ข้อมูลอยู่กับคุณ</p>
+      </div>
+
+      <div class="header-actions">
+        <span id="networkStatus" class="badge">กำลังตรวจสอบ</span>
+        <button id="installButton" class="secondary" hidden>
+          ติดตั้งแอป
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="notice">
+      <span id="offlineStatus" role="status">
+        กำลังเตรียมการใช้งานออฟไลน์…
+      </span>
+      <small>
+        ข้อมูลเก็บในเครื่องนี้เท่านั้น ควรสำรอง JSON เป็นประจำ
+      </small>
+    </div>
+
+    <section class="stats" aria-label="สรุปค่าใช้จ่าย">
+      <article class="stat">
+        <span>ยอดทั้งหมดในเครื่อง</span>
+        <strong id="allTotal">฿0.00</strong>
+      </article>
+      <article class="stat accent">
+        <span>ยอดตามตัวกรอง</span>
+        <strong id="filteredTotal">฿0.00</strong>
+      </article>
+      <article class="stat">
+        <span>จำนวนรายการตามตัวกรอง</span>
+        <strong id="filteredCount">0</strong>
+      </article>
+    </section>
+
+    <div class="workspace">
+      <section class="card form-card">
+        <div class="section-heading">
+          <h2 id="formTitle">เพิ่มค่าใช้จ่าย</h2>
+          <span class="pill">บันทึกในเครื่อง</span>
+        </div>
+
+        <form id="expenseForm">
+          <label for="expenseDate">วันที่จ่าย</label>
+          <input id="expenseDate" type="date" required>
+
+          <label for="expenseCategory">หมวดกิจกรรม</label>
+          <select id="expenseCategory" required></select>
+
+          <label for="expenseAmount">จำนวนเงิน (บาท)</label>
+          <input
+            id="expenseAmount"
+            type="number"
+            inputmode="decimal"
+            min="0"
+            max="1000000000"
+            step="0.01"
+            placeholder="เช่น 2500"
+            required
+          >
+
+          <label for="expenseNote">รายละเอียด</label>
+          <textarea
+            id="expenseNote"
+            rows="4"
+            maxlength="10000"
+            placeholder="เช่น ค่าเรียน 12 ครั้ง / ชื่อลูก / วันหมดอายุคอร์ส"
+          ></textarea>
+
+          <div class="actions">
+            <button type="submit">บันทึกค่าใช้จ่าย</button>
+            <button id="cancelEdit" type="button"
+                    class="secondary" hidden>
+              ยกเลิกแก้ไข
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>ภาพรวมค่าใช้จ่าย</h2>
+
+        <div class="filters">
+          <div>
+            <label for="filterMonth">เดือน</label>
+            <input id="filterMonth" type="month">
+          </div>
+          <div>
+            <label for="filterCategory">หมวดกิจกรรม</label>
+            <select id="filterCategory"></select>
+          </div>
+          <div>
+            <label for="filterSearch">ค้นหารายละเอียด</label>
+            <input id="filterSearch" type="search"
+                   placeholder="เช่น เปียโน / ชื่อลูก">
+          </div>
+        </div>
+
+        <button id="clearFilters" class="secondary small">
+          ล้างตัวกรอง
+        </button>
+
+        <div class="charts">
+          <div>
+            <h3>แยกตามกิจกรรม</h3>
+            <div id="categoryChart" class="chart"></div>
+          </div>
+          <div>
+            <h3>แยกตามเดือน</h3>
+            <div id="monthChart" class="chart"></div>
+          </div>
+        </div>
+
+        <p class="muted">
+          กราฟและรายงาน CSV ใช้ตัวกรองเดียวกับรายการด้านล่าง
+        </p>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="section-heading">
+        <h2>รายการค่าใช้จ่าย</h2>
+        <button id="exportCsv" class="secondary">
+          ส่งออกรายงาน CSV
+        </button>
+      </div>
+
+      <div id="expenseList" class="expense-list"></div>
+
+      <div class="pagination">
+        <button id="previousPage" class="secondary small">
+          ก่อนหน้า
+        </button>
+        <span id="pageLabel"></span>
+        <button id="nextPage" class="secondary small">
+          ถัดไป
+        </button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>นำเข้าข้อมูลและสำรองข้อมูล</h2>
+
+      <div class="backup-grid">
+        <div>
+          <h3>สำรองข้อมูลทั้งหมด</h3>
+          <p class="muted">
+            JSON เก็บข้อมูลทั้งหมดโดยไม่ขึ้นกับตัวกรอง
+            ใช้ย้ายเครื่องหรือกู้คืนข้อมูล
+          </p>
+
+          <div class="actions">
+            <button id="exportJson">สำรอง JSON</button>
+            <button id="persistStorage" class="secondary">
+              ขอเก็บข้อมูลถาวร
+            </button>
+          </div>
+
+          <p id="storageStatus" class="muted" role="status"></p>
+        </div>
+
+        <div>
+          <h3>นำเข้า CSV / JSON</h3>
+
+          <label for="importFile">ไฟล์ข้อมูล</label>
+          <input
+            id="importFile"
+            type="file"
+            accept=".csv,.json,text/csv,application/json"
+          >
+
+          <label for="dateOrder">รูปแบบวันที่ของข้อมูลเดิม</label>
+          <select id="dateOrder">
+            <option value="DMY">วัน/เดือน/ปี เช่น 2/4/2026 = 2 เมษายน</option>
+            <option value="MDY">เดือน/วัน/ปี เช่น 2/4/2026 = 4 กุมภาพันธ์</option>
+          </select>
+
+          <label for="importMode">วิธีนำเข้า</label>
+          <select id="importMode">
+            <option value="merge">รวมข้อมูล — ข้ามรายการซ้ำ</option>
+            <option value="replace">แทนที่ทั้งหมด — เฉพาะไฟล์สำรอง JSON ของแอป</option>
+          </select>
+
+          <button id="prepareImport" class="secondary">
+            ตรวจสอบไฟล์ก่อนนำเข้า
+          </button>
+
+          <p class="muted">
+            CSV รองรับหัวคอลัมน์ Google Sheet เดิม
+            ส่วน CSV รายงานที่ส่งออกใช้สำหรับ Excel ไม่ใช่ไฟล์กู้คืน
+          </p>
+        </div>
+      </div>
+
+      <div id="importPreview" class="preview" hidden>
+        <h3>ผลตรวจสอบก่อนนำเข้า</h3>
+        <p id="previewSummary"></p>
+        <p id="previewExplanation" class="muted"></p>
+
+        <div class="actions">
+          <button id="confirmImport">ยืนยันนำเข้า</button>
+          <button id="cancelImport" class="secondary">ยกเลิก</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      ไม่มีบัญชีผู้ใช้ • ไม่มีการส่งรายการค่าใช้จ่ายไปยังเซิร์ฟเวอร์
+      <br>
+      หลีกเลี่ยงโหมดไม่ระบุตัวตน และสำรอง JSON ก่อนล้างข้อมูลเว็บไซต์
+    </footer>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
